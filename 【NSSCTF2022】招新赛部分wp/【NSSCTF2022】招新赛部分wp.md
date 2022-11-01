@@ -1,3 +1,5 @@
+# 目录
+
 - [NSSCTF2022招新赛部分wp](#nssctf2022招新赛部分wp)
   - [Web](#web)
     - [funny_web](#funny_web)
@@ -2142,3 +2144,4 @@ while True:
 得到flag：NSSCTF{09b43595-8b96-4aa4-a5d2-c327c8e41174}
 
 ![截图](https://nssctf.wdf.ink/img/yxy/d2b95ca347c091616a8b48f17eda48e0.png)
+
