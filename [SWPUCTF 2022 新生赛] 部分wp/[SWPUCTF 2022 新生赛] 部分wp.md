@@ -63,7 +63,7 @@
     - [Call the Alien](#call-the-alien)
     - [Continue](#continue)
 
-# NSSCTF2022招新赛部分wp
+# [SWPUCTF 2022 新生赛] 部分wp
 
 ## Web
 
