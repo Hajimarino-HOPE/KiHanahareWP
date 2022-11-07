@@ -153,7 +153,7 @@ print(flag)
 
 发现判断结构，需要输入的值与 `decrypt2('AAAAAAAAAAAfFwwRSAIWWQ==', key):` 相等
 
-![image-20221107095256653](https://nssctf.wdf.ink/img/yxy/image-20221107095256653.png)
+![image20221107095256653](https://nssctf.wdf.ink/img/yxy/image-20221107095256653.png)
 
 不想判断，直接改为true，运行得到flag
 
